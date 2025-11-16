@@ -106,3 +106,40 @@ export const renameFile = async ({ fileId, name, extension, path }: RenameFilePr
     handleError(error, 'failed to rename file');
   }
 };
+export const updateFileUsers = async ({ fileId, emails, path }: UpdateFileUsersProps) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        users: emails,
+      },
+    );
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, 'failed to rename file');
+  }
+};
+export const deleteFile = async ({ fileId, bucketFileId, path }: DeleteFileProps) => {
+  const { databases, storage } = await createAdminClient();
+
+  try {
+    const deletedFile = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+    );
+
+    if (deletedFile) {
+      await storage.deleteFile(appwriteConfig.bucketId, bucketFileId);
+    }
+    revalidatePath(path);
+    return parseStringify({ status: 'success' });
+  } catch (error) {
+    handleError(error, 'failed to rename file');
+  }
+};

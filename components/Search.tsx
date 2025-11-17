@@ -1,75 +1,88 @@
 'use client';
 
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { navItems } from '@/constants';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { usePathname, useRouter } from 'next/navigation';
+import { getFiles } from '@/lib/actions/file.action';
+import { Models } from 'node-appwrite';
+import Thumbnail from '@/components/Thumbnail';
+import FormattedDateTime from '@/components/FormattedDateTime';
+import { useDebounce } from 'use-debounce';
 
-interface Props {
-  fullName: string;
-  avatar: string;
-  email: string;
-}
+const Search = () => {
+  const [query, setQuery] = useState('');
+  const [debouncedQuery] = useDebounce(query, 300); // Debounce for UX and API throttle
+  const [results, setResults] = useState<Models.Document[]>([]);
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const path = usePathname();
 
-const Sidebar = ({ fullName, avatar, email }: Props) => {
-  const pathname = usePathname();
+  useEffect(() => {
+    // Don't rely on searchParams for immediate updates.
+    if (debouncedQuery.length === 0) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    async function fetchFiles() {
+      const files = await getFiles({ types: [], searchText: debouncedQuery }); // Ensure your searchText is the debounced query
+      setResults(files.documents || []);
+      setOpen(true);
+    }
+    fetchFiles();
+  }, [debouncedQuery]); // Only rerun when the debounced query changes
+
+  const handleClickItem = (file: any) => {
+    setOpen(false);
+    setResults([]);
+    router.push(
+      `/${file.type === 'video' || file.type === 'audio' ? 'media' : file.type + 's'}?query=${debouncedQuery}`,
+    );
+  };
 
   return (
-    <aside className="sidebar">
-      <Link href="/">
-        <Image
-          src="/assets/icons/logo-full-brand.svg"
-          alt="logo"
-          width={160}
-          height={50}
-          className="hidden h-auto lg:block"
+    <div className="search">
+      <div className="search-input-wrapper">
+        <Image src="/assets/icons/search.svg" alt="Search" width={24} height={24} />
+        <Input
+          value={query}
+          placeholder="Search..."
+          className="search-input"
+          onChange={(e) => setQuery(e.target.value)}
         />
-
-        <Image
-          src="/assets/icons/logo-brand.svg"
-          alt="logo"
-          width={52}
-          height={52}
-          className="lg:hidden"
-        />
-      </Link>
-
-      <nav className="sidebar-nav">
-        <ul className="flex flex-1 flex-col gap-6">
-          {navItems.map(({ url, name, icon }) => (
-            <Link key={name} href={url} className="lg:w-full">
-              <li className={cn('sidebar-nav-item', pathname === url && 'shad-active')}>
-                <Image
-                  src={icon}
-                  alt={name}
-                  width={24}
-                  height={24}
-                  className={cn('nav-icon', pathname === url && 'nav-icon-active')}
-                />
-                <p className="hidden lg:block">{name}</p>
-              </li>
-            </Link>
-          ))}
-        </ul>
-      </nav>
-
-      <Image
-        src="/assets/images/files-2.png"
-        alt="logo"
-        width={506}
-        height={418}
-        className="w-full"
-      />
-
-      <div className="sidebar-user-info">
-        <Image src={avatar} alt="Avatar" width={44} height={44} className="sidebar-user-avatar" />
-        <div className="hidden lg:block">
-          <p className="subtitle-2 capitalize">{fullName}</p>
-          <p className="caption">{email}</p>
-        </div>
+        {open && (
+          <ul className="search-result">
+            {results.length > 0 ? (
+              results.map((file) => (
+                <li
+                  className="flex items-center justify-between"
+                  key={file.$id}
+                  onClick={() => handleClickItem(file)}
+                >
+                  <div className="flex cursor-pointer items-center gap-4">
+                    <Thumbnail
+                      type={file.type}
+                      extension={file.extension}
+                      url={file.url}
+                      className="size-9 min-w-9"
+                    />
+                    <p className="subtitle-2 line-clamp-1 text-light-100">{file.name}</p>
+                  </div>
+                  <FormattedDateTime
+                    date={file.$createdAt}
+                    className="caption line-clamp-1 text-light-200"
+                  />
+                </li>
+              ))
+            ) : (
+              <p className="empty-result">No files found</p>
+            )}
+          </ul>
+        )}
       </div>
-    </aside>
+    </div>
   );
 };
-export default Sidebar;
+
+export default Search;

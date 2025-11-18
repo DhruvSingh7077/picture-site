@@ -3,6 +3,8 @@
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { demoLogin } from '@/lib/actions/user.actions';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +32,9 @@ const authFormSchema = (formType: FormType) => {
 };
 
 const AuthForm = ({ type }: { type: FormType }) => {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [accountId, setAccountId] = useState(null);
 
@@ -64,6 +68,19 @@ const AuthForm = ({ type }: { type: FormType }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 🔵 DEMO LOGIN HANDLER
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+
+    const result = await demoLogin();
+
+    if (result?.success) {
+      router.push('/dashboard'); // redirect to dashboard
+    }
+
+    setDemoLoading(false);
   };
 
   return (
@@ -122,6 +139,27 @@ const AuthForm = ({ type }: { type: FormType }) => {
               />
             )}
           </Button>
+
+          {/* 🔵 DEMO LOGIN BUTTON */}
+          {type === 'sign-in' && (
+            <Button
+              type="button"
+              className="form-submit-button mt-3 bg-gray-700 hover:bg-gray-900"
+              onClick={handleDemoLogin}
+              disabled={demoLoading}
+            >
+              Continue as Demo User
+              {demoLoading && (
+                <Image
+                  src="/assets/icons/loader.svg"
+                  alt="loader"
+                  width={24}
+                  height={24}
+                  className="ml-2 animate-spin"
+                />
+              )}
+            </Button>
+          )}
 
           {errorMessage && <p className="error-message">*{errorMessage}</p>}
 

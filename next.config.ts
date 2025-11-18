@@ -27,9 +27,14 @@ const nextConfig: NextConfig = {
         hostname: 'cloud.appwrite.io',
       },
       {
-        protocol:'https',
+        protocol: 'https',
         hostname: 'sgp.cloud.appwrite.io',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatar.iran.liara.run',
+        pathname: '/**',
+      },
     ],
   },
 };

@@ -155,3 +155,48 @@ export const signInUser = async ({ email }: { email: string }) => {
     return { accountId: null, error: 'Sign in failed' };
   }
 };
+
+// DEMO LOGIN (NO OTP REQUIRED)
+export const demoLogin = async () => {
+  try {
+    const { account, databases } = await createAdminClient();
+
+    // 1. Create anonymous session
+    const session = await account.createAnonymousSession();
+
+    // 2. Set cookie
+    (await cookies()).set('appwrite-session', session.secret, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: true,
+    });
+
+    // 3. Check if demo document exists
+    const demoUser = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      [Query.equal('accountid', session.userId)],
+    );
+
+    // 4. If not, create demo user in DB
+    if (demoUser.total === 0) {
+      await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.usersCollectionId,
+        ID.unique(),
+        {
+          fullName: 'Demo User',
+          email: 'demo@demo.com',
+          avatar: 'https://avatar.iran.liara.run/public',
+          accountid: session.userId,
+        },
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.log('Demo login failed:', error);
+    return { success: false };
+  }
+};
